@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mopidy-yt-cast-receiver"
+version = "0.1.0"
+description = "DIAL-based YouTube Music cast receiver service for Mopidy"
+authors = [{ name = "ChatGPT" }]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+development = ["pytest>=7.4"]
+
+[project.urls]
+Homepage = "https://github.com/example/mopidy-yt-cast-receiver"
