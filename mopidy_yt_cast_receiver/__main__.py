@@ -27,6 +27,15 @@ def main() -> None:
         default="http://127.0.0.1:6680/mopidy/rpc",
         help="Mopidy HTTP JSON-RPC endpoint",
     )
+    parser.add_argument(
+        "--pairing-code",
+        help="Optional fixed TV code; defaults to a random 12-digit value",
+    )
+    parser.add_argument(
+        "--require-pairing-code",
+        action="store_true",
+        help="Reject launches unless a matching pairingCode parameter is provided",
+    )
 
     args = parser.parse_args()
     service = DialService(
@@ -35,9 +44,12 @@ def main() -> None:
         friendly_name=args.friendly_name,
         mopidy_rpc_url=args.rpc_url,
         ssdp_port=args.ssdp_port,
+        pairing_code=args.pairing_code,
+        require_pairing_code=args.require_pairing_code,
     )
     service.start()
     LOGGER.info("DIAL service available at %s", service.application_url)
+    LOGGER.info("TV code for manual pairing: %s", service._pairing.formatted)
     try:
         while True:
             time.sleep(1)

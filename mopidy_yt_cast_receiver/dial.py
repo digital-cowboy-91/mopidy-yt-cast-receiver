@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -9,6 +10,7 @@ from typing import Dict
 from urllib.parse import parse_qs, urlparse
 
 from .mopidy import MopidyClient
+from .pairing import PairingCode
 from .ssdp import SSDPServer
 from .youtube import YouTubeCastApp
 
@@ -56,6 +58,8 @@ class DialService:
         app_name: str = "YouTube",
         mopidy_rpc_url: str = "http://127.0.0.1:6680/mopidy/rpc",
         ssdp_port: int = 1900,
+        pairing_code: str | None = None,
+        require_pairing_code: bool = False,
     ) -> None:
         self.host = host
         self.port = port
@@ -67,6 +71,8 @@ class DialService:
 
         self._youtube_app = YouTubeCastApp(app_name)
         self._mopidy = MopidyClient(mopidy_rpc_url)
+        self._pairing = PairingCode(pairing_code) if pairing_code else PairingCode.generate()
+        self._require_pairing_code = require_pairing_code
 
         self._httpd: ThreadingHTTPServer | None = None
         self._http_thread: threading.Thread | None = None
@@ -120,6 +126,9 @@ class DialService:
                                 "This endpoint serves the YouTube DIAL namespace.",
                                 "SSDP descriptor: /ssdp/device-desc.xml",
                                 f"App status: /apps/{service.app_name}",
+                                "TV code (use Link with TV code if discovery fails):",
+                                f"  {service._pairing.formatted}",
+                                "Pairing code API: /pairing/code",
                             ]
                         ),
                     )
@@ -132,6 +141,14 @@ class DialService:
                         udn=service.udn,
                     )
                     self._send_response(200, descriptor, "application/xml")
+                    return
+
+                if parsed.path == "/pairing/code":
+                    code_payload = {
+                        "code": service._pairing.normalized,
+                        "formatted": service._pairing.formatted,
+                    }
+                    self._send_response(200, json.dumps(code_payload), "application/json")
                     return
 
                 if parsed.path == f"/apps/{service.app_name}":
@@ -158,6 +175,14 @@ class DialService:
                 length = int(self.headers.get("Content-Length", 0))
                 raw_body = self.rfile.read(length) if length else b""
                 params = self._parse_params(raw_body.decode())
+
+                provided_code = params.get("pairingCode") or params.get("code")
+                if (service._require_pairing_code or provided_code) and not service._pairing.matches(
+                    provided_code
+                ):
+                    self.send_error(403, "Invalid or missing pairing code")
+                    return
+
                 launch_id = service._youtube_app.launch(params, service._mopidy)
                 status_url = f"{service.application_url}/apps/{service.app_name}/{launch_id}"
                 self.send_response(201)

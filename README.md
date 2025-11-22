@@ -55,12 +55,13 @@ Mopidy server.
 
    Visiting the root page (e.g. `http://localhost:8009/`) returns a brief text
    response listing the important DIAL endpoints if you want to verify the
-   service is responding without a DIAL client.
+   service is responding without a DIAL client. It also shows the **TV code**
+   used for manual pairing (see step 3).
 
 3. Open the YouTube Music app on your phone and look for the cast target named
    after the Mopidy instance (defaults to **Mopidy YouTube Music**). The cast
    target appears automatically when discovery works—there is no link or pairing
-   code. A few tips if it does not show up:
+   code required for automatic discovery. A few tips if it does not show up:
 
    - The phone must be on the same layer-2 network (no guest/VLAN isolation) so
      it can send SSDP multicast probes (UDP/1900) to find the receiver.
@@ -96,6 +97,20 @@ Mopidy server.
 
      Seeing an HTTP/200 response that includes `yt-cast-receiver` confirms the
      SSDP broadcast is reachable.
+
+   If automatic discovery is blocked on your network, you can pair manually
+   using the TV code shown on the receiver's root page or via the API at
+   `/pairing/code`:
+
+   - In YouTube Music on your phone, open **Settings → Link with TV code** and
+     enter the 12-digit code displayed by the receiver (formatted like
+     `123-456-789-012`).
+   - When you start the service, the code is also logged and you can supply your
+     own static code with `--pairing-code`.
+   - To force clients to present the correct code on every launch request, start
+     the receiver with `--require-pairing-code`. This makes the DIAL POST to
+     `/apps/YouTube` return HTTP 403 unless the `pairingCode=` parameter matches
+     the configured TV code.
 
 ## Development
 
