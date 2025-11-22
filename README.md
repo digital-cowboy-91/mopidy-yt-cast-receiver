@@ -26,9 +26,36 @@ Mopidy server.
    python -m mopidy_yt_cast_receiver --rpc-url http://127.0.0.1:6680/mopidy/rpc
    ```
 
+   Make sure Mopidy's built-in HTTP extension is enabled (it is by default) so
+   that the `/mopidy/rpc` endpoint is reachable. The quickest way is to add the
+   following to your `mopidy.conf` (or verify it already exists) and then restart
+   Mopidy:
+
+   ```ini
+   [http]
+   enabled = true
+   hostname = 0.0.0.0   ; or 127.0.0.1 if you only need local access
+   port = 6680
+   ```
+
+   After Mopidy restarts, confirm JSON-RPC is available with a curl request while
+   Mopidy is running:
+
+   ```bash
+   curl http://127.0.0.1:6680/mopidy/rpc -d '{"jsonrpc":"2.0","id":1,"method":"core.playback.get_state"}' -H "Content-Type: application/json"
+   ```
+
+   A JSON response indicates Mopidy is exposing JSON-RPC correctly. If the
+   request fails, ensure `http/enabled = true` in your Mopidy configuration and
+   restart Mopidy.
+
    By default the DIAL HTTP server binds to `0.0.0.0:8009` and the SSDP service
    listens on port `1900`. Both values can be overridden with command-line
    options.
+
+   Visiting the root page (e.g. `http://localhost:8009/`) returns a brief text
+   response listing the important DIAL endpoints if you want to verify the
+   service is responding without a DIAL client.
 
 3. Open the YouTube Music app on your phone and look for the cast target named
    after the Mopidy instance (defaults to **Mopidy YouTube Music**).

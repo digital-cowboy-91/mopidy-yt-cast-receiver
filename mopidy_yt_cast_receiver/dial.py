@@ -111,6 +111,20 @@ class DialService:
 
             def do_GET(self):  # noqa: N802
                 parsed = urlparse(self.path)
+                if parsed.path in ("/", ""):
+                    self._send_response(
+                        200,
+                        "\n".join(
+                            [
+                                f"Mopidy YouTube Cast Receiver ({service.friendly_name})",
+                                "This endpoint serves the YouTube DIAL namespace.",
+                                "SSDP descriptor: /ssdp/device-desc.xml",
+                                f"App status: /apps/{service.app_name}",
+                            ]
+                        ),
+                    )
+                    return
+
                 if parsed.path == "/ssdp/device-desc.xml":
                     descriptor = _build_device_descriptor(
                         application_url=service.application_url,
