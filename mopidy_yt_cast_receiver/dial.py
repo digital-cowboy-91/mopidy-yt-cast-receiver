@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -13,6 +14,8 @@ from .mopidy import MopidyClient
 from .pairing import PairingCode
 from .ssdp import SSDPServer
 from .youtube import YouTubeCastApp
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _build_device_descriptor(application_url: str, friendly_name: str, udn: str) -> str:
@@ -115,24 +118,35 @@ class DialService:
             def log_message(self, format, *args):  # noqa: A003
                 return
 
+            def do_HEAD(self):  # noqa: N802
+                response = self._resolve_response()
+                if response is None:
+                    return
+                code, payload, content_type = response
+                self._send_response(code, payload, content_type, include_body=False)
+
             def do_GET(self):  # noqa: N802
+                response = self._resolve_response()
+                if response is None:
+                    return
+                code, payload, content_type = response
+                self._send_response(code, payload, content_type)
+
+            def _resolve_response(self):
                 parsed = urlparse(self.path)
                 if parsed.path in ("/", ""):
-                    self._send_response(
-                        200,
-                        "\n".join(
-                            [
-                                f"Mopidy YouTube Cast Receiver ({service.friendly_name})",
-                                "This endpoint serves the YouTube DIAL namespace.",
-                                "SSDP descriptor: /ssdp/device-desc.xml",
-                                f"App status: /apps/{service.app_name}",
-                                "TV code (use Link with TV code if discovery fails):",
-                                f"  {service._pairing.formatted}",
-                                "Pairing code API: /pairing/code",
-                            ]
-                        ),
+                    body = "\n".join(
+                        [
+                            f"Mopidy YouTube Cast Receiver ({service.friendly_name})",
+                            "This endpoint serves the YouTube DIAL namespace.",
+                            "SSDP descriptor: /ssdp/device-desc.xml",
+                            f"App status: /apps/{service.app_name}",
+                            "TV code (use Link with TV code if discovery fails):",
+                            f"  {service._pairing.formatted}",
+                            "Pairing code API: /pairing/code",
+                        ]
                     )
-                    return
+                    return 200, body, "text/plain"
 
                 if parsed.path == "/ssdp/device-desc.xml":
                     descriptor = _build_device_descriptor(
@@ -140,23 +154,21 @@ class DialService:
                         friendly_name=service.friendly_name,
                         udn=service.udn,
                     )
-                    self._send_response(200, descriptor, "application/xml")
-                    return
+                    return 200, descriptor, "application/xml"
 
                 if parsed.path == "/pairing/code":
                     code_payload = {
                         "code": service._pairing.normalized,
                         "formatted": service._pairing.formatted,
                     }
-                    self._send_response(200, json.dumps(code_payload), "application/json")
-                    return
+                    return 200, json.dumps(code_payload), "application/json"
 
                 if parsed.path == f"/apps/{service.app_name}":
                     status = service._youtube_app.application_status(service.application_url)
-                    self._send_response(200, status, "application/xml")
-                    return
+                    return 200, status, "application/xml"
 
                 self.send_error(404)
+                return None
 
             def do_DELETE(self):  # noqa: N802
                 parsed = urlparse(self.path)
@@ -180,10 +192,16 @@ class DialService:
                 if (service._require_pairing_code or provided_code) and not service._pairing.matches(
                     provided_code
                 ):
+                    LOGGER.warning("Rejected launch with invalid pairing code: %s", provided_code)
                     self.send_error(403, "Invalid or missing pairing code")
                     return
 
                 launch_id = service._youtube_app.launch(params, service._mopidy)
+                LOGGER.info(
+                    "Accepted launch for %s (pairing code provided=%s)",
+                    service.app_name,
+                    bool(provided_code),
+                )
                 status_url = f"{service.application_url}/apps/{service.app_name}/{launch_id}"
                 self.send_response(201)
                 self.send_header("Location", status_url)
@@ -203,13 +221,20 @@ class DialService:
                 parsed = parse_qs(body)
                 return {key: values[0] for key, values in parsed.items()}
 
-            def _send_response(self, code: int, payload: str, content_type: str = "text/plain") -> None:
+            def _send_response(
+                self,
+                code: int,
+                payload: str,
+                content_type: str = "text/plain",
+                *,
+                include_body: bool = True,
+            ) -> None:
                 encoded = payload.encode()
                 self.send_response(code)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", str(len(encoded)))
                 self.end_headers()
-                if encoded:
+                if include_body and encoded:
                     self.wfile.write(encoded)
 
         return DialHTTPRequestHandler

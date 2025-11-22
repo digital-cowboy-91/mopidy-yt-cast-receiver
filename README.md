@@ -102,11 +102,23 @@ Mopidy server.
    using the TV code shown on the receiver's root page or via the API at
    `/pairing/code`:
 
-   - In YouTube Music on your phone, open **Settings → Link with TV code** and
-     enter the 12-digit code displayed by the receiver (formatted like
-     `123-456-789-012`).
-   - When you start the service, the code is also logged and you can supply your
-     own static code with `--pairing-code`.
+  - In YouTube Music on your phone, open **Settings → Link with TV code** and
+    enter the 12-digit code displayed by the receiver (formatted like
+    `123-456-789-012`).
+  - When you start the service, the code is also logged and you can supply your
+    own static code with `--pairing-code`.
+  - The receiver logs whether a launch request was accepted or rejected when a
+    pairing code is supplied. If the phone UI keeps the confirm button disabled,
+    try a manual request such as:
+
+    ```bash
+    curl -i -X POST "http://<host>:8009/apps/YouTube" \
+      -d "pairingCode=123-456-789-012&v=1"
+    ```
+
+    A `201 Created` response indicates the code was parsed and accepted by the
+    receiver. If you see `403`, the code from the app did not match the active
+    TV code shown at `/pairing/code`.
   - To force clients to present the correct code on every launch request, start
     the receiver with `--require-pairing-code`. This makes the DIAL POST to
     `/apps/YouTube` return HTTP 403 unless the `pairingCode=` parameter matches

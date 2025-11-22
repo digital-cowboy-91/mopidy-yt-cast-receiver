@@ -18,6 +18,11 @@ def test_dial_endpoints_support_launch_and_status():
         assert welcome.status == 200
         assert "DIAL namespace" in welcome.read().decode()
 
+        conn.request("HEAD", "/")
+        welcome_head = conn.getresponse()
+        assert welcome_head.status == 200
+        assert int(welcome_head.getheader("Content-Length")) > 0
+
         conn.request("GET", "/pairing/code")
         pairing = conn.getresponse()
         assert pairing.status == 200
