@@ -174,7 +174,7 @@ class DialService:
 
                 length = int(self.headers.get("Content-Length", 0))
                 raw_body = self.rfile.read(length) if length else b""
-                params = self._parse_params(raw_body.decode())
+                params = self._parse_params(raw_body.decode(), self.headers.get("Content-Type"))
 
                 provided_code = params.get("pairingCode") or params.get("code")
                 if (service._require_pairing_code or provided_code) and not service._pairing.matches(
@@ -189,7 +189,17 @@ class DialService:
                 self.send_header("Location", status_url)
                 self.end_headers()
 
-            def _parse_params(self, body: str) -> Dict[str, str]:
+            def _parse_params(self, body: str, content_type: str | None) -> Dict[str, str]:
+                if not body:
+                    return {}
+
+                if content_type and "json" in content_type:
+                    try:
+                        data = json.loads(body)
+                        return {key: str(value) for key, value in data.items()}
+                    except json.JSONDecodeError:
+                        pass
+
                 parsed = parse_qs(body)
                 return {key: values[0] for key, values in parsed.items()}
 

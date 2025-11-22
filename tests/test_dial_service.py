@@ -60,6 +60,16 @@ def test_pairing_code_required_blocks_unknown_clients():
         missing_code.read()
 
         conn.request(
+            "POST",
+            f"/apps/{service.app_name}",
+            body='{"v": "1", "pairingCode": "1234-567-89012"}',
+            headers={"Content-Type": "application/json"},
+        )
+        json_launch = conn.getresponse()
+        assert json_launch.status == 201
+        json_launch.read()
+
+        conn.request(
             "POST", f"/apps/{service.app_name}", body="v=1&pairingCode=1234-567-89012"
         )
         launch = conn.getresponse()

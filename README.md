@@ -107,10 +107,13 @@ Mopidy server.
      `123-456-789-012`).
    - When you start the service, the code is also logged and you can supply your
      own static code with `--pairing-code`.
-   - To force clients to present the correct code on every launch request, start
-     the receiver with `--require-pairing-code`. This makes the DIAL POST to
-     `/apps/YouTube` return HTTP 403 unless the `pairingCode=` parameter matches
-     the configured TV code.
+  - To force clients to present the correct code on every launch request, start
+    the receiver with `--require-pairing-code`. This makes the DIAL POST to
+    `/apps/YouTube` return HTTP 403 unless the `pairingCode=` parameter matches
+    the configured TV code.
+  - Launch requests can send the code either as URL-encoded form data
+    (`pairingCode=...`) or as JSON (`{"pairingCode": "..."}`), matching how
+    the YouTube Music app submits TV codes.
 
 ## Development
 
