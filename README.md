@@ -58,7 +58,44 @@ Mopidy server.
    service is responding without a DIAL client.
 
 3. Open the YouTube Music app on your phone and look for the cast target named
-   after the Mopidy instance (defaults to **Mopidy YouTube Music**).
+   after the Mopidy instance (defaults to **Mopidy YouTube Music**). The cast
+   target appears automatically when discovery works—there is no link or pairing
+   code. A few tips if it does not show up:
+
+   - The phone must be on the same layer-2 network (no guest/VLAN isolation) so
+     it can send SSDP multicast probes (UDP/1900) to find the receiver.
+   - Ensure the host running this service allows inbound UDP/1900 and
+     TCP/8009 from the phone.
+   - Discovery relies on the YouTube **Music** app’s DIAL support; the regular
+     YouTube video app will not list this receiver.
+   - You can manually confirm discovery by issuing an SSDP M-SEARCH from a
+     machine on the same network:
+
+     ```bash
+     python - <<'PY'
+     import socket
+     message = '\r\n'.join([
+         'M-SEARCH * HTTP/1.1',
+         'HOST:239.255.255.250:1900',
+         'MAN:"ssdp:discover"',
+         'MX:1',
+         'ST: urn:dial-multiscreen-org:service:dial:1',
+         '',
+         ''
+     ])
+     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+     sock.settimeout(2)
+     sock.sendto(message.encode(), ('239.255.255.250', 1900))
+     try:
+         data, _ = sock.recvfrom(2048)
+         print(data.decode())
+     except socket.timeout:
+         print('No SSDP response received (check firewall or network isolation).')
+     PY
+     ```
+
+     Seeing an HTTP/200 response that includes `yt-cast-receiver` confirms the
+     SSDP broadcast is reachable.
 
 ## Development
 
