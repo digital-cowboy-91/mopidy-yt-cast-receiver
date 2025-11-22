@@ -13,11 +13,6 @@ def test_dial_endpoints_support_launch_and_status():
         host, port = service.host, service.port
         conn = HTTPConnection(host, port)
 
-        conn.request("GET", "/")
-        welcome = conn.getresponse()
-        assert welcome.status == 200
-        assert "DIAL namespace" in welcome.read().decode()
-
         conn.request("GET", "/ssdp/device-desc.xml")
         desc = conn.getresponse()
         descriptor = desc.read().decode()

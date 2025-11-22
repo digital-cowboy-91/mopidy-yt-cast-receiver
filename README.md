@@ -30,10 +30,6 @@ Mopidy server.
    listens on port `1900`. Both values can be overridden with command-line
    options.
 
-   Visiting the root page (e.g. `http://localhost:8009/`) returns a brief text
-   response listing the important DIAL endpoints if you want to verify the
-   service is responding without a DIAL client.
-
 3. Open the YouTube Music app on your phone and look for the cast target named
    after the Mopidy instance (defaults to **Mopidy YouTube Music**).
 
